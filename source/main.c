@@ -12,7 +12,7 @@
     /* PIC18Fのメイン関数名はmain() */
     #define MAIN main
     /* タスクスケジューラを開始するAPI関数 */
-    #define START_SCHEDULER()       vTaskStartScheduler()
+    #define START_SCHEDULER() TaskStartScheduler()
 #elif defined(ESP32)
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
@@ -21,8 +21,8 @@
 
     /* ESP32のメイン関数名はapp_main() */
     #define MAIN app_main
-    /* ESP32ではapp_main()呼び出し前にタスクスケジューラが開始済みのため、
-     *ユーザー・アプリケーション側では実行不要 */
+    /* ESP32ではapp_main()呼び出し前にタスクスケジューラが
+       開始済みのため、ユーザー・アプリケーション側では実行不要 */
     #define START_SCHEDULER()
 #endif
 
@@ -31,15 +31,22 @@ void vDeviceInitialize(void)
 {
     /* LED用のGPIOを出力モードにして初期値を0とする。*/
 #if defined(ESP32)
-    gpio_pad_select_gpio(GPIO_NUM_0);
-    gpio_pad_select_gpio(GPIO_NUM_2);
-    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_OUTPUT);
-    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+    gpio_config_t conf;
+    conf.intr_type = GPIO_INTR_DISABLE;
+    conf.mode = GPIO_MODE_OUTPUT;
+    conf.pin_bit_mask = (1ULL << GPIO_NUM_0)
+                        | (1ULL << GPIO_NUM_2)
+                        | (1ULL << GPIO_NUM_4);
+    conf.pull_down_en = 0;
+    conf.pull_up_en = 0;
+    gpio_config(&conf);
     gpio_set_level(GPIO_NUM_0, 0);
     gpio_set_level(GPIO_NUM_2, 0);
+    gpio_set_level(GPIO_NUM_4, 0);
 #elif defined(PIC18F)
-    TRISD &= 0xfc;
-    PORTD &= 0xfc;
+    /* LEDが接続しているポートDの0〜3を出力モードに設定 */
+    TRISD &= 0xf0;
+    PORTD &= 0xf0;
 #endif
 }
 
@@ -47,22 +54,18 @@ void vDeviceInitialize(void)
 void vSetLedStatus(UBaseType_t uNum, BaseType_t xState)
 {
 #if defined(ESP32)
-    switch (uNum) {
-    case 0:
+    if (uNum == 0) {
         gpio_set_level(GPIO_NUM_0, xState);
-        break;
-    case 1:
+    }
+    else if (uNum == 1) {
         gpio_set_level(GPIO_NUM_2, xState);
-        break;
     }
 #elif defined(PIC18F)
-    switch (uNum) {
-    case 0:
+    if (uNum == 0) {
         LATDbits.LATD0 = xState;
-        break;
-    case 1:
+    }
+    else if (uNum == 1) {
         LATDbits.LATD1 = xState;
-        break;
     }
 #endif
 }
@@ -94,10 +97,12 @@ void vFlashTask(void *pvParameters)
 void vReceiverTask(void *pvParameters) {
     UBaseType_t uxValue;
     while(1) {
-        /* キューからメッセージを取り出す。 */
+        /* キューにメッセージが届くまで待つ。 */
         if(xQueueReceive(xQueue, &uxValue, portMAX_DELAY)) {
             /* 受信したメッセージをパラメータとして新しいタスクを生成する。 */
-            xTaskCreate(vFlashTask, "FLS", configMINIMAL_STACK_SIZE + 10, (void *)uxValue, tskIDLE_PRIORITY + 1, NULL);
+            xTaskCreate(vFlashTask, "FLS",
+                        configMINIMAL_STACK_SIZE + 10,
+                        (void *)uxValue, tskIDLE_PRIORITY + 1, NULL);
         }
     }
 }
@@ -127,8 +132,15 @@ void MAIN(void)
 {
     vDeviceInitialize();
     xQueue = xQueueCreate(QUEUE_LENGTH, sizeof(UBaseType_t));
-    xTaskCreate(vReceiverTask, "RCV", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(vSenderTask, "SND", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(vBlinkTask, "BLK", configMINIMAL_STACK_SIZE + 10, (void *)500, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(vReceiverTask, "RCV",
+                configMINIMAL_STACK_SIZE + 10,
+                NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(vSenderTask, "SND",
+                configMINIMAL_STACK_SIZE + 10,
+                NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(vBlinkTask, "BLK",
+                configMINIMAL_STACK_SIZE + 10,
+                (void *)500, tskIDLE_PRIORITY + 1, NULL);
     START_SCHEDULER();
 }
+
