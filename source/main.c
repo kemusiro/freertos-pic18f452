@@ -127,8 +127,8 @@ void MAIN(void)
 {
     vDeviceInitialize();
     xQueue = xQueueCreate(QUEUE_LENGTH, sizeof(UBaseType_t));
-    xTaskCreate(vReceiverTask, "RECV", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(vSenderTask, "SEND", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(vReceiverTask, "RCV", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(vSenderTask, "SND", configMINIMAL_STACK_SIZE + 10, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(vBlinkTask, "BLK", configMINIMAL_STACK_SIZE + 10, (void *)500, tskIDLE_PRIORITY + 1, NULL);
     START_SCHEDULER();
 }
