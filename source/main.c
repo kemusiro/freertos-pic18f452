@@ -12,7 +12,7 @@
     /* PIC18Fのメイン関数名はmain() */
     #define MAIN main
     /* タスクスケジューラを開始するAPI関数 */
-    #define START_SCHEDULER() TaskStartScheduler()
+    #define START_SCHEDULER() vTaskStartScheduler()
 #elif defined(ESP32)
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
