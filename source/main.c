@@ -1,6 +1,7 @@
 /* ---------- デバイス依存コード ---------- */
 #if defined(PIC18F)
     #pragma config LVP = OFF
+    #pragma config WDT = OFF
     #pragma config OSC = HS
 
     #include "FreeRTOS.h"
@@ -55,11 +56,11 @@ void vSetLedStatus(UBaseType_t uNum, BaseType_t xState)
     static int led[3] = {GPIO_NUM_0, GPIO_NUM_2, GPIO_NUM_4};
     gpio_set_level(led[uNum], xState);
 #elif defined(PIC18F)
-    if (xState == 0) {
-        LATD &= (1 << uNum);
+    if (uNum == 0) {
+        LATDbits.LATD0 = xState;
     }
-    else {
-        LATD |= (1 << uNum);
+    else if (uNum == 1) {
+        LATDbits.LATD1 = xState;
     }
 #endif
 }
