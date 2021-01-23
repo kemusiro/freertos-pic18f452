@@ -1,8 +1,6 @@
 /* ---------- デバイス依存コード ---------- */
 #if defined(PIC18F)
     #pragma config LVP = OFF
-    #pragma config BOR = OFF
-    #pragma config WDT = OFF
     #pragma config OSC = HS
 
     #include "FreeRTOS.h"
@@ -54,18 +52,14 @@ void vDeviceInitialize(void)
 void vSetLedStatus(UBaseType_t uNum, BaseType_t xState)
 {
 #if defined(ESP32)
-    if (uNum == 0) {
-        gpio_set_level(GPIO_NUM_0, xState);
-    }
-    else if (uNum == 1) {
-        gpio_set_level(GPIO_NUM_2, xState);
-    }
+    static int led[3] = {GPIO_NUM_0, GPIO_NUM_2, GPIO_NUM_4};
+    gpio_set_level(led[uNum], xState);
 #elif defined(PIC18F)
-    if (uNum == 0) {
-        LATDbits.LATD0 = xState;
+    if (xState == 0) {
+        LATD &= (1 << uNum);
     }
-    else if (uNum == 1) {
-        LATDbits.LATD1 = xState;
+    else {
+        LATD |= (1 << uNum);
     }
 #endif
 }
@@ -99,7 +93,7 @@ void vReceiverTask(void *pvParameters) {
     while(1) {
         /* キューにメッセージが届くまで待つ。 */
         if(xQueueReceive(xQueue, &uxValue, portMAX_DELAY)) {
-            /* 受信したメッセージをパラメータとして新しいタスクを生成する。 */
+            /* 受信した値をパラメータとして新しいタスクを生成する。 */
             xTaskCreate(vFlashTask, "FLS",
                         configMINIMAL_STACK_SIZE + 10,
                         (void *)uxValue, tskIDLE_PRIORITY + 1, NULL);
@@ -143,4 +137,3 @@ void MAIN(void)
                 (void *)500, tskIDLE_PRIORITY + 1, NULL);
     START_SCHEDULER();
 }
-
